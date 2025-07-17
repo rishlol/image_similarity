@@ -10,10 +10,13 @@ namespace fs = filesystem;
 
 constexpr auto DIM = 8;
 
-cv::Mat normalize_image(cv::Mat img) {
-    cv::Mat out;
-    cv::normalize(img, out, 0.0, 1.0, cv::NORM_MINMAX);
-    out.convertTo(img, CV_8U, 255.0);
+cv::Mat& normalize_image(cv::Mat &img) {
+    // img is assigned a new object in new memory address
+    if (img.type() == CV_32FC1) {
+        cv::Mat out1;
+        cv::normalize(img, out1, 0.0, 1.0, cv::NORM_MINMAX);
+        out1.convertTo(img, CV_8U, 255.0);
+    }
     return img;
 }
 
@@ -70,10 +73,10 @@ int main(int argc, char *argv[]) {
 	cv::cvtColor(img2_8, gray2, cv::COLOR_BGR2GRAY);
     
     // Normalize images if necessary
-    if (gray1.type() == CV_8UC1) {
+    if (gray1.type() == CV_32FC1) {
         gray1 = normalize_image(gray1);
     }
-    if (gray2.type() == CV_8UC1) {
+    if (gray2.type() == CV_32FC1) {
         gray2 = normalize_image(gray2);
     }
     
