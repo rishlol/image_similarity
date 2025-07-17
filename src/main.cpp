@@ -37,11 +37,14 @@ int main(int argc, char *argv[]) {
         ("version,v", "Show version")
         ("img", "Image file")
         ("comp", "Comparison file/directory")
+        ("alg,a", po::value<string>()->default_value("avg"), "Hashing algorithm: avg | pcep")
     ;
+
     // Specify positional arguments
     po::positional_options_description p;
     p.add("img", 1);
     p.add("comp", 1);
+    
     // Get arguments
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
@@ -69,7 +72,7 @@ int main(int argc, char *argv[]) {
     if(!fs::exists(img_path) && !fs::is_regular_file(img_path)) {
         cerr << "Enter valid img file!\n";
         return 2;
-    } else if(SUPPORTED_IMG_TYPES.find(img_path.extension().string()) == SUPPORTED_IMG_TYPES.end()) {
+    } else if(!SUPPORTED_IMG_TYPES.count(img_path.extension().string())) {
         cerr << "Enter supported img file!\n";
         return 3;
     }
@@ -83,23 +86,23 @@ int main(int argc, char *argv[]) {
     
     uint64_t ref_hash = img_process_pipeline(img).second;
     if (fs::is_regular_file(comp_path)) {
-        if(!fs::exists(comp_path) && SUPPORTED_IMG_TYPES.find(comp_path.extension().string()) == SUPPORTED_IMG_TYPES.end()) {
+        if(!fs::exists(comp_path) || !SUPPORTED_IMG_TYPES.count(comp_path.extension().string())) {
             cerr << "Enter supported img file for comparison!\n";
             return 3;
         }
         uint64_t comp_hash = img_process_pipeline(comp).second;
         int res = hamming_distance(ref_hash ^ comp_hash);
-        if (res == 0) {
+        if (res < 8) {
             cout << img << " and " << comp << " are similar!\n";
         } else {
-            cout << img << " and " << comp << " are NOT similar!\n";
+            // cout << img << " and " << comp << " are NOT similar!\n";
         }
     } else if(fs::is_directory(comp_path)) {
         fs::recursive_directory_iterator d(comp_path);
         fs::recursive_directory_iterator end;
         while(d != end) {
             // Skip file if does not exist or is not valid image
-            if(fs::exists(d->path()) && fs::is_regular_file(d->path()) && SUPPORTED_IMG_TYPES.find(d->path().extension().string()) != SUPPORTED_IMG_TYPES.end()) {
+            if(fs::exists(d->path()) && fs::is_regular_file(d->path()) && SUPPORTED_IMG_TYPES.count(d->path().extension().string()) && d->path() != img_path) {
                 string p = d->path().string();
                 futures.emplace_back(async(launch::async, img_process_pipeline, p));
             }
@@ -107,11 +110,12 @@ int main(int argc, char *argv[]) {
         }
         for(future<pair<string, uint64_t>> &fut : futures) {
             pair<string, uint64_t> path_hash = fut.get();
-            int res = hamming_distance(path_hash.second);
-            if (res == 0) {
+            int res = hamming_distance(ref_hash ^ path_hash.second);
+            if (res < 8) {
                 cout << img << " and " << path_hash.first << " are similar!\n";
             } else {
-                cout << img << " and " << path_hash.first << " are NOT similar!\n";
+                // cout << path_hash.first << ": " << path_hash.second << endl;
+                // cout << img << " and " << path_hash.first << " are NOT similar!\n";
             }
         }
     }
