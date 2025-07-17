@@ -2,7 +2,6 @@
 #include <opencv2/opencv.hpp>
 #include <boost/program_options.hpp>
 #include <filesystem>
-#include <thread>
 #include <vector>
 #include <cstdint>
 #include <future>
@@ -18,22 +17,11 @@ constexpr auto VERSION = "v1.1.0";
 constexpr auto DIM = 8;
 const unordered_set<string> SUPPORTED_IMG_TYPES = {
     // Always supported
-    ".bmp", ".dib",               // Windows bitmaps
-    ".gif",                       // GIF
-    ".pbm", ".pgm", ".ppm",
-    ".pxm", ".pnm",               // Portable image formats
-    ".sr", ".ras",                // Sun rasters
-    ".hdr", ".pic",               // Radiance HDR
-
+    ".bmp", ".dib", ".gif", ".pbm", ".pgm", ".ppm",
+    ".pxm", ".pnm", ".sr", ".ras", ".hdr", ".pic",
     // Conditionally supported
-    ".jpeg", ".jpg", ".jpe",      // JPEG
-    ".png",                       // PNG
-    ".webp",                      // WebP
-    ".avif",                      // AVIF
-    ".jp2",                       // JPEG 2000
-    ".pfm",                       // PFM
-    ".tiff", ".tif",              // TIFF
-    ".exr"                        // OpenEXR
+    ".jpeg", ".jpg", ".jpe", ".png", ".webp", ".avif",
+    ".jp2", ".pfm", ".tiff", ".tif", ".exr"
 };
 
 cv::Mat& normalize_image(cv::Mat &);
@@ -46,7 +34,7 @@ int main(int argc, char *argv[]) {
     po::options_description desc("Usage:");
     desc.add_options()
         ("help,h", "Produce help message")
-        ("version,v", VERSION)
+        ("version,v", "Show version")
         ("img", "Image file")
         ("comp", "Comparison file/directory")
     ;
@@ -127,7 +115,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
 	return 0;
 }
 
