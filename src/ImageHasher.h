@@ -12,6 +12,9 @@ class ImageHasher {
 private:
     cv::Mat image;
     uint64_t hash;
+    fs::path file;
+protected:
+    void resize_grayscale(const int);
 public:
     ImageHasher();
     ImageHasher(fs::path);
@@ -25,10 +28,23 @@ public:
         return hash;
     }
     
-    void preprocess_square_grayscale(int);
+    inline void resize_grayscale_8() {
+        resize_grayscale(8);
+    };
+    inline void grayscale_32() {
+        resize_grayscale(32);
+    };
     cv::Mat& normalize_image();
     int hamming_distance(ImageHasher &);
-    uint64_t average_hash(int);
+    int hamming_distance(uint64_t);
+    
+    // Hashing algorithms
+    uint64_t average_hash();
+    uint64_t perceptual_hash();
+    
+    // Hashing pipelines
+    pair<string, uint64_t> average_hash_pipeline();
+    pair<string, uint64_t> perceptual_hash_pipeline();
     
     int operator-(ImageHasher &);
 };

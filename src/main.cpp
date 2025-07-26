@@ -13,6 +13,8 @@ using namespace std;
 namespace fs = filesystem;
 namespace po = boost::program_options;
 
+typedef pair<string, uint64_t> PipelineOut;
+
 constexpr auto NAME = "image_similarity";
 constexpr auto VERSION = "v1.1.0";
 constexpr auto DIM = 8;
@@ -26,10 +28,7 @@ const unordered_set<string> SUPPORTED_IMG_TYPES = {
     ".jp2", ".pfm", ".tiff", ".tif", ".exr"
 };
 
-cv::Mat& normalize_image(cv::Mat &); // MOVED!
-uint64_t average_hash(const cv::Mat &); // MOVED!
-int hamming_distance(uint64_t); // MOVED!
-pair<string, uint64_t> img_process_pipeline(const string);
+PipelineOut average_hash_pipeline_wrapper(const fs::path);
 
 namespace image_similarity {
     enum HASH_TYPE {
@@ -88,6 +87,7 @@ int main(int argc, char *argv[]) {
     image_similarity::HASH_TYPE hash_func = image_similarity::get_hash_type(vm["alg"].as<string>());
 	fs::path img_path(img);
 	fs::path comp_path(comp);
+    ImageHasher img_data(img_path);
     
     // Checking img and comp inputs
     if(!fs::exists(img_path)) {
@@ -106,20 +106,19 @@ int main(int argc, char *argv[]) {
     }
     
     // Stores pair with string and future that returns hash value
-    vector<future<pair<string, uint64_t>>> futures;
+    vector<future<PipelineOut>> futures;
     
-    uint64_t ref_hash = img_process_pipeline(img).second;
+    uint64_t ref_hash = img_data.average_hash_pipeline().second;
     if (fs::is_regular_file(comp_path)) {
         if(!fs::exists(comp_path) || !SUPPORTED_IMG_TYPES.count(comp_path.extension().string())) {
             cerr << "Enter supported img file for comparison!\n";
             return 3;
         }
-        uint64_t comp_hash = img_process_pipeline(comp).second;
-        int res = hamming_distance(ref_hash ^ comp_hash);
+        ImageHasher comp_data(comp_path);
+        uint64_t comp_hash = comp_data.average_hash_pipeline().second;
+        int res = img_data - comp_data;
         if (res < AVG_THRES) {
-            cout << img << " and " << comp << " are similar!\n";
-        } else {
-            // cout << img << " and " << comp << " are NOT similar!\n";
+            cout << img << " and " << comp<< " are similar!\n";
         }
     } else if(fs::is_directory(comp_path)) {
         fs::recursive_directory_iterator d(comp_path);
@@ -127,80 +126,23 @@ int main(int argc, char *argv[]) {
         while(d != end) {
             // Skip file if does not exist or is not valid image
             if(fs::exists(d->path()) && fs::is_regular_file(d->path()) && SUPPORTED_IMG_TYPES.count(d->path().extension().string()) && d->path() != img_path) {
-                string p = d->path().string();
-                futures.emplace_back(async(launch::async, img_process_pipeline, p));
+                string p = d->path();
+                futures.emplace_back(async(launch::async, average_hash_pipeline_wrapper, p));
             }
             d++;
         }
-        for(future<pair<string, uint64_t>> &fut : futures) {
-            pair<string, uint64_t> path_hash = fut.get();
-            int res = hamming_distance(ref_hash ^ path_hash.second);
+        for(future<PipelineOut> &fut : futures) {
+            PipelineOut path_hash = fut.get();
+            int res = img_data.hamming_distance(path_hash.second);
             if (res < AVG_THRES) {
                 cout << img << " and " << path_hash.first << " are similar!\n";
-            } else {
-                // cout << path_hash.first << ": " << path_hash.second << endl;
-                // cout << img << " and " << path_hash.first << " are NOT similar!\n";
             }
         }
     }
 	return 0;
 }
 
-// MOVED!
-cv::Mat& normalize_image(cv::Mat &img) {
-    // img is assigned a new object in new memory address
-    if (img.type() == CV_32FC1) {
-        cv::Mat out1, out2;
-        cv::normalize(img, out1, 0.0, 1.0, cv::NORM_MINMAX);
-        out1.convertTo(out2, CV_8U, 255.0);
-        img = out2.clone();
-    }
-    return img;
-}
-
-// MOVED!
-uint64_t average_hash(const cv::Mat &img) {
-    // Expects img to be of type CV_8UC1
-    double avg = cv::mean(img)[0];
-    
-    // Build 64-bit hash
-    uint64_t hash = 0;
-    for (int r = 0; r < DIM; r += 1) {
-        for (int c = 0; c < DIM; c += 1) {
-            hash <<= 1;
-            if (img.at<uchar>(r, c) >= avg) {
-                hash |= 1;
-            }
-        }
-    }
-    return hash;
-}
-
-// MOVED!
-int hamming_distance(uint64_t diff) {
-    int count = 0;
-    while(diff > 0) {
-        count += diff & 1;
-        diff >>= 1;
-    }
-    return count;
-}
-
-pair<string, uint64_t> img_process_pipeline(const string img) {
-    // Load image
-    cv::Mat imgcv = cv::imread(img);
-    
-    // Resize
-    cv::Mat resized_img;
-    cv::resize(imgcv, resized_img, cv::Size(DIM, DIM));
-    
-    // Convert to grayscale
-    cv::Mat gray;
-    cv::cvtColor(resized_img, gray, cv::COLOR_BGR2GRAY);
-    
-    // Normalize if necessary
-    normalize_image(gray);
-    
-    // Return hash
-    return pair(img, average_hash(gray));
+PipelineOut average_hash_pipeline_wrapper(const fs::path img) {
+    ImageHasher data(img);
+    return data.average_hash_pipeline();
 }
