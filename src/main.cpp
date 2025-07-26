@@ -7,6 +7,7 @@
 #include <future>
 #include <utility>
 #include <unordered_set>
+#include "ImageHasher.h"
 
 using namespace std;
 namespace fs = filesystem;
@@ -15,6 +16,7 @@ namespace po = boost::program_options;
 constexpr auto NAME = "image_similarity";
 constexpr auto VERSION = "v1.1.0";
 constexpr auto DIM = 8;
+constexpr int AVG_THRES = 16;
 const unordered_set<string> SUPPORTED_IMG_TYPES = {
     // Always supported
     ".bmp", ".dib", ".gif", ".pbm", ".pgm", ".ppm",
@@ -24,20 +26,37 @@ const unordered_set<string> SUPPORTED_IMG_TYPES = {
     ".jp2", ".pfm", ".tiff", ".tif", ".exr"
 };
 
-cv::Mat& normalize_image(cv::Mat &);
-uint64_t average_hash(const cv::Mat &);
-int hamming_distance(uint64_t);
+cv::Mat& normalize_image(cv::Mat &); // MOVED!
+uint64_t average_hash(const cv::Mat &); // MOVED!
+int hamming_distance(uint64_t); // MOVED!
 pair<string, uint64_t> img_process_pipeline(const string);
+
+namespace image_similarity {
+    enum HASH_TYPE {
+        ERR = -1,
+        AVERAGE,
+        PERCEPTUAL,
+    };
+
+    inline HASH_TYPE get_hash_type(const string &s) {
+        if(s == "avg") {
+            return AVERAGE;
+        } else if(s == "pcp") {
+            return PERCEPTUAL;
+        }
+        return ERR;
+    }
+}
 
 int main(int argc, char *argv[]) {
     // Add arguments
-    po::options_description desc("Usage:");
+    po::options_description desc("Usage");
     desc.add_options()
         ("help,h", "Produce help message")
         ("version,v", "Show version")
+        ("alg,a", po::value<string>()->default_value("avg"), "Hashing algorithm: avg | pcp")
         ("img", "Image file")
         ("comp", "Comparison file/directory")
-        ("alg,a", po::value<string>()->default_value("avg"), "Hashing algorithm: avg | pcep")
     ;
 
     // Specify positional arguments
@@ -59,17 +78,22 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     if(!vm.count("img") || !vm.count("comp")) {
-        cerr << "Usage: image_similarity <img1> <dir>\n";
+        cerr << "Usage: image_similarity <img> <comp>\n";
         return 1;
     }
 
 	// Get paths
     string img = vm["img"].as<string>();
     string comp = vm["comp"].as<string>();
+    image_similarity::HASH_TYPE hash_func = image_similarity::get_hash_type(vm["alg"].as<string>());
 	fs::path img_path(img);
 	fs::path comp_path(comp);
     
-    if(!fs::exists(img_path) && !fs::is_regular_file(img_path)) {
+    // Checking img and comp inputs
+    if(!fs::exists(img_path)) {
+        cerr << "Image does not exist! Enter valid img file.\n";
+        return 2;
+    } else if(!fs::is_regular_file(img_path)) {
         cerr << "Enter valid img file!\n";
         return 2;
     } else if(!SUPPORTED_IMG_TYPES.count(img_path.extension().string())) {
@@ -81,7 +105,7 @@ int main(int argc, char *argv[]) {
         return 2;
     }
     
-    // Stores pair with string and future that returns hash
+    // Stores pair with string and future that returns hash value
     vector<future<pair<string, uint64_t>>> futures;
     
     uint64_t ref_hash = img_process_pipeline(img).second;
@@ -92,7 +116,7 @@ int main(int argc, char *argv[]) {
         }
         uint64_t comp_hash = img_process_pipeline(comp).second;
         int res = hamming_distance(ref_hash ^ comp_hash);
-        if (res < 8) {
+        if (res < AVG_THRES) {
             cout << img << " and " << comp << " are similar!\n";
         } else {
             // cout << img << " and " << comp << " are NOT similar!\n";
@@ -111,7 +135,7 @@ int main(int argc, char *argv[]) {
         for(future<pair<string, uint64_t>> &fut : futures) {
             pair<string, uint64_t> path_hash = fut.get();
             int res = hamming_distance(ref_hash ^ path_hash.second);
-            if (res < 8) {
+            if (res < AVG_THRES) {
                 cout << img << " and " << path_hash.first << " are similar!\n";
             } else {
                 // cout << path_hash.first << ": " << path_hash.second << endl;
@@ -122,6 +146,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+// MOVED!
 cv::Mat& normalize_image(cv::Mat &img) {
     // img is assigned a new object in new memory address
     if (img.type() == CV_32FC1) {
@@ -133,6 +158,7 @@ cv::Mat& normalize_image(cv::Mat &img) {
     return img;
 }
 
+// MOVED!
 uint64_t average_hash(const cv::Mat &img) {
     // Expects img to be of type CV_8UC1
     double avg = cv::mean(img)[0];
@@ -150,6 +176,7 @@ uint64_t average_hash(const cv::Mat &img) {
     return hash;
 }
 
+// MOVED!
 int hamming_distance(uint64_t diff) {
     int count = 0;
     while(diff > 0) {

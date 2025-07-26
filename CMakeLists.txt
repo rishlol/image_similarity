@@ -14,12 +14,17 @@ message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 message(STATUS "OpenCV include dir: ${OpenCV_INCLUDE_DIRS}")
 
 # Add executable
-add_executable(image_similarity src/main.cpp)
+add_executable(image_similarity
+	src/main.cpp
+	src/ImageHasher.cpp
+	src/ImageHasher.h # Remove later
+)
 
 # Include headers
 target_include_directories(image_similarity PRIVATE
 	${OpenCV_INCLUDE_DIRS}
 	${Boost_INCLUDE_DIRS}
+	src
 )
 
 # Link libraries

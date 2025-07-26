@@ -431,6 +431,7 @@ build*/
 *.log
 *.idb
 
-# Junk
+# Random
 .DS_Store
 Thumbs.db
+.sampleargs.txt
