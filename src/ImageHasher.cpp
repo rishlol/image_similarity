@@ -26,7 +26,6 @@ ImageHasher::ImageHasher(ImageHasher &i) {
     file = i.file;
 }
 
-
 // Functions
 void ImageHasher::resize_grayscale(const int DIM) {
     // Resize image to square and convert to grayscale
@@ -88,6 +87,7 @@ uint64_t ImageHasher::average_hash() {
 
 uint64_t ImageHasher::perceptual_hash() {
     cv::Mat dct(32, 32, CV_64F, cv::Scalar(0));
+    
     // Populate dct matrix
     for (int r = 0; r < 32; r += 1) {
         for (int c = 0; c < 32; c += 1) {
@@ -110,10 +110,10 @@ uint64_t ImageHasher::perceptual_hash() {
         }
     }
     
-    // Partial sort and store median
+    // Partial sort and store median (technically 33rd element)
     vector<double> sorted = dct_values;
     nth_element(sorted.begin(), sorted.begin() + 32, sorted.end());
-    double median = sorted[0];
+    double median = sorted[32];
     
     // Iterate over dct values and create hash
     uint64_t h = 0;
@@ -153,6 +153,10 @@ pair<string, uint64_t> ImageHasher::perceptual_hash_pipeline() {
 }
 
 // Operators
-int ImageHasher::operator-(ImageHasher &i) {
-    return this->hamming_distance(i);
-}
+//int ImageHasher::operator-(ImageHasher &i) {
+//    return this->hamming_distance(i);
+//}
+//
+//int ImageHasher::operator-(const uint64_t h) {
+//    return this->hamming_distance(h);
+//}

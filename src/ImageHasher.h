@@ -6,8 +6,6 @@
 #include <cstdint>
 #include <cmath>
 
-//#define PI 3.1415926535897932384
-
 using namespace std;
 namespace fs = filesystem;
 
@@ -25,11 +23,13 @@ protected:
         return u == 0 ? 1.0 / sqrt(2) : 1.0;
     }
 public:
+    // Constructors
     ImageHasher();
     ImageHasher(fs::path);
     ImageHasher(string);
     ImageHasher(ImageHasher &);
     
+    // Getters
     inline cv::Mat& getImage() {
         return image;
     }
@@ -37,6 +37,7 @@ public:
         return hash;
     }
     
+    // Functions
     inline void resize_grayscale_8() {
         resize_grayscale(8);
     };
@@ -55,7 +56,13 @@ public:
     pair<string, uint64_t> average_hash_pipeline();
     pair<string, uint64_t> perceptual_hash_pipeline();
     
-    int operator-(ImageHasher &);
+    // Operators
+    int operator-(ImageHasher &i) {
+        return this->hamming_distance(i);
+    }
+    int operator-(const uint64_t h) {
+        return this->hamming_distance(h);
+    }
 };
 
 #endif

@@ -15,8 +15,8 @@ namespace po = boost::program_options;
 
 constexpr auto NAME = "image_similarity";
 constexpr auto VERSION = "v1.1.0";
-constexpr auto DIM = 8;
 constexpr int AVG_THRES = 16;
+constexpr int PCP_THRES = 20;
 const unordered_set<string> SUPPORTED_IMG_TYPES = {
     // Always supported
     ".bmp", ".dib", ".gif", ".pbm", ".pgm", ".ppm",
@@ -25,8 +25,6 @@ const unordered_set<string> SUPPORTED_IMG_TYPES = {
     ".jpeg", ".jpg", ".jpe", ".png", ".webp", ".avif",
     ".jp2", ".pfm", ".tiff", ".tif", ".exr"
 };
-
-PipelineOut average_hash_pipeline_wrapper(const fs::path);
 
 namespace img_sim {
     enum HASH_TYPE {
@@ -44,6 +42,9 @@ namespace img_sim {
         return ERR;
     }
 }
+
+PipelineOut average_hash_pipeline_wrapper(const fs::path);
+PipelineOut perceptual_hash_pipeline_wrapper(const fs::path);
 
 int main(int argc, char *argv[]) {
     // Add arguments
@@ -82,10 +83,8 @@ int main(int argc, char *argv[]) {
 	// Get paths
     string img = vm["img"].as<string>();
     string comp = vm["comp"].as<string>();
-    img_sim::HASH_TYPE hash_func = img_sim::get_hash_type(vm["alg"].as<string>());
 	fs::path img_path(img);
 	fs::path comp_path(comp);
-    ImageHasher img_data(img_path);
     
     // Checking img and comp inputs
     if(!fs::exists(img_path)) {
@@ -103,19 +102,42 @@ int main(int argc, char *argv[]) {
         return 2;
     }
     
+    img_sim::HASH_TYPE hash_func = img_sim::get_hash_type(vm["alg"].as<string>());
+    ImageHasher img_data(img_path);
+    switch (hash_func) {
+        case img_sim::AVERAGE:
+            img_data.average_hash_pipeline();
+            break;
+        case img_sim::PERCEPTUAL:
+            img_data.perceptual_hash_pipeline();
+            break;
+        case img_sim::ERR:
+            cerr << "Enter a valid hash function!\n";
+            return 4;
+    }
+//    img_data.average_hash_pipeline();
+    
     // Stores pair with string and future that returns hash value
     vector<future<PipelineOut>> futures;
-    
-//    uint64_t ref_hash = img_data.average_hash_pipeline().second;
-    img_data.average_hash_pipeline();
+
     if (fs::is_regular_file(comp_path)) {
         if(!fs::exists(comp_path) || !SUPPORTED_IMG_TYPES.count(comp_path.extension().string())) {
             cerr << "Enter supported img file for comparison!\n";
             return 3;
         }
         ImageHasher comp_data(comp_path);
-//        uint64_t comp_hash = comp_data.average_hash_pipeline().second;
-        comp_data.average_hash_pipeline();
+        switch (hash_func) {
+            case img_sim::AVERAGE:
+                comp_data.average_hash_pipeline();
+                break;
+            case img_sim::PERCEPTUAL:
+                comp_data.perceptual_hash_pipeline();
+                break;
+            case img_sim::ERR:
+                cerr << "Enter a valid hash function!\n";
+                return 4;
+        }
+//        comp_data.average_hash_pipeline();
         int res = img_data - comp_data;
         if (res < AVG_THRES) {
             cout << img << " and " << comp<< " are similar!\n";
@@ -127,15 +149,38 @@ int main(int argc, char *argv[]) {
             // Skip file if does not exist or is not valid image
             if(fs::exists(d->path()) && fs::is_regular_file(d->path()) && SUPPORTED_IMG_TYPES.count(d->path().extension().string()) && d->path() != img_path) {
                 string p = d->path();
-                futures.emplace_back(async(launch::async, average_hash_pipeline_wrapper, p));
+                ImageHasher comp_data(comp_path);
+                switch (hash_func) {
+                    case img_sim::AVERAGE:
+                        futures.emplace_back(async(launch::async, average_hash_pipeline_wrapper, p));
+                        break;
+                    case img_sim::PERCEPTUAL:
+                        futures.emplace_back(async(launch::async, perceptual_hash_pipeline_wrapper, p));
+                        break;
+                    case img_sim::ERR:
+                        cerr << "Enter a valid hash function!\n";
+                        return 4;
+                }
             }
             d++;
         }
         for(future<PipelineOut> &fut : futures) {
             PipelineOut path_hash = fut.get();
-            int res = img_data.hamming_distance(path_hash.second);
-            if (res < AVG_THRES) {
-                cout << img << " and " << path_hash.first << " are similar!\n";
+            int res = img_data - path_hash.second;
+            switch (hash_func) {
+                case img_sim::AVERAGE:
+                    if (res < AVG_THRES) {
+                        cout << img << " and " << path_hash.first << " are similar!\n";
+                    }
+                    break;
+                case img_sim::PERCEPTUAL:
+                    if (res < PCP_THRES) {
+                        cout << img << " and " << path_hash.first << " are similar!\n";
+                    }
+                    break;
+                case img_sim::ERR:
+                    cerr << "Enter a valid hash function!\n";
+                    return 4;
             }
         }
     }
@@ -145,4 +190,9 @@ int main(int argc, char *argv[]) {
 PipelineOut average_hash_pipeline_wrapper(const fs::path img) {
     ImageHasher data(img);
     return data.average_hash_pipeline();
+}
+
+PipelineOut perceptual_hash_pipeline_wrapper(const fs::path img) {
+    ImageHasher data(img);
+    return data.perceptual_hash_pipeline();
 }
