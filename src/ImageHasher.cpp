@@ -46,15 +46,15 @@ cv::Mat& ImageHasher::normalize_image() {
     return image;
 }
 
-int ImageHasher::hamming_distance(ImageHasher &i) {
-    uint64_t diff = hash ^ i.hash;
-    int count = 0;
-    while(diff > 0) {
-        count += diff & 1;
-        diff >>= 1;
-    }
-    return count;
-}
+//int ImageHasher::hamming_distance(ImageHasher &i) {
+//    uint64_t diff = hash ^ i.hash;
+//    int count = 0;
+//    while(diff > 0) {
+//        count += diff & 1;
+//        diff >>= 1;
+//    }
+//    return count;
+//}
 
 int ImageHasher::hamming_distance(uint64_t h) {
     uint64_t diff = hash ^ h;
@@ -111,9 +111,9 @@ uint64_t ImageHasher::perceptual_hash() {
     }
     
     // Partial sort and store median (technically 33rd element)
-    vector<double> sorted = dct_values;
-    nth_element(sorted.begin(), sorted.begin() + 32, sorted.end());
-    double median = sorted[32];
+    vector<double> sorted(dct_values.begin() + 1, dct_values.end());
+    nth_element(sorted.begin(), sorted.begin() + 30, sorted.end());
+    double median = sorted[30];
     
     // Iterate over dct values and create hash
     uint64_t h = 0;
@@ -128,7 +128,7 @@ uint64_t ImageHasher::perceptual_hash() {
 }
 
 // Hashing pipelines
-pair<string, uint64_t> ImageHasher::average_hash_pipeline() {
+PipelineOut ImageHasher::average_hash_pipeline() {
     // Resize and convert to grayscale
     resize_grayscale_8();
     
@@ -140,7 +140,7 @@ pair<string, uint64_t> ImageHasher::average_hash_pipeline() {
     return pair(file.string(), hash);
 }
 
-pair<string, uint64_t> ImageHasher::perceptual_hash_pipeline() {
+PipelineOut ImageHasher::perceptual_hash_pipeline() {
     // Resize and convert to grayscale
     resize_grayscale_32();
     
@@ -151,12 +151,3 @@ pair<string, uint64_t> ImageHasher::perceptual_hash_pipeline() {
     perceptual_hash();
     return pair(file.string(), hash);
 }
-
-// Operators
-//int ImageHasher::operator-(ImageHasher &i) {
-//    return this->hamming_distance(i);
-//}
-//
-//int ImageHasher::operator-(const uint64_t h) {
-//    return this->hamming_distance(h);
-//}

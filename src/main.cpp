@@ -15,8 +15,8 @@ namespace po = boost::program_options;
 
 constexpr auto NAME = "image_similarity";
 constexpr auto VERSION = "v1.1.0";
-constexpr int AVG_THRES = 16;
-constexpr int PCP_THRES = 20;
+constexpr int AVG_THRES = 14; // Threshold for average hashing
+constexpr int PCP_THRES = 18; // Threshold for perceptual hashing
 const unordered_set<string> SUPPORTED_IMG_TYPES = {
     // Always supported
     ".bmp", ".dib", ".gif", ".pbm", ".pgm", ".ppm",
@@ -34,11 +34,10 @@ namespace img_sim {
     };
 
     inline HASH_TYPE get_hash_type(const string &s) {
-        if(s == "avg") {
+        if(s == "avg")
             return AVERAGE;
-        } else if(s == "pcp") {
+        else if(s == "pcp")
             return PERCEPTUAL;
-        }
         return ERR;
     }
 }
@@ -115,7 +114,6 @@ int main(int argc, char *argv[]) {
             cerr << "Enter a valid hash function!\n";
             return 4;
     }
-//    img_data.average_hash_pipeline();
     
     // Stores pair with string and future that returns hash value
     vector<future<PipelineOut>> futures;
@@ -137,7 +135,6 @@ int main(int argc, char *argv[]) {
                 cerr << "Enter a valid hash function!\n";
                 return 4;
         }
-//        comp_data.average_hash_pipeline();
         int res = img_data - comp_data;
         if (res < AVG_THRES) {
             cout << img << " and " << comp<< " are similar!\n";
@@ -148,14 +145,12 @@ int main(int argc, char *argv[]) {
         while(d != end) {
             // Skip file if does not exist or is not valid image
             if(fs::exists(d->path()) && fs::is_regular_file(d->path()) && SUPPORTED_IMG_TYPES.count(d->path().extension().string()) && d->path() != img_path) {
-                string p = d->path();
-                ImageHasher comp_data(comp_path);
                 switch (hash_func) {
                     case img_sim::AVERAGE:
-                        futures.emplace_back(async(launch::async, average_hash_pipeline_wrapper, p));
+                        futures.emplace_back(async(launch::async, average_hash_pipeline_wrapper, d->path()));
                         break;
                     case img_sim::PERCEPTUAL:
-                        futures.emplace_back(async(launch::async, perceptual_hash_pipeline_wrapper, p));
+                        futures.emplace_back(async(launch::async, perceptual_hash_pipeline_wrapper, d->path()));
                         break;
                     case img_sim::ERR:
                         cerr << "Enter a valid hash function!\n";
@@ -169,14 +164,12 @@ int main(int argc, char *argv[]) {
             int res = img_data - path_hash.second;
             switch (hash_func) {
                 case img_sim::AVERAGE:
-                    if (res < AVG_THRES) {
+                    if (res < AVG_THRES)
                         cout << img << " and " << path_hash.first << " are similar!\n";
-                    }
                     break;
                 case img_sim::PERCEPTUAL:
-                    if (res < PCP_THRES) {
+                    if (res < PCP_THRES)
                         cout << img << " and " << path_hash.first << " are similar!\n";
-                    }
                     break;
                 case img_sim::ERR:
                     cerr << "Enter a valid hash function!\n";
