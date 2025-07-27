@@ -4,9 +4,15 @@
 #include <opencv2/opencv.hpp>
 #include <filesystem>
 #include <cstdint>
+#include <cmath>
+
+//#define PI 3.1415926535897932384
 
 using namespace std;
 namespace fs = filesystem;
+
+typedef pair<string, uint64_t> PipelineOut;
+constexpr double PI = 3.1415926535897932384;
 
 class ImageHasher {
 private:
@@ -15,6 +21,9 @@ private:
     fs::path file;
 protected:
     void resize_grayscale(const int);
+    inline double dct_constant(const int u) {
+        return u == 0 ? 1.0 / sqrt(2) : 1.0;
+    }
 public:
     ImageHasher();
     ImageHasher(fs::path);
@@ -31,7 +40,7 @@ public:
     inline void resize_grayscale_8() {
         resize_grayscale(8);
     };
-    inline void grayscale_32() {
+    inline void resize_grayscale_32() {
         resize_grayscale(32);
     };
     cv::Mat& normalize_image();

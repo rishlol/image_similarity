@@ -13,8 +13,6 @@ using namespace std;
 namespace fs = filesystem;
 namespace po = boost::program_options;
 
-typedef pair<string, uint64_t> PipelineOut;
-
 constexpr auto NAME = "image_similarity";
 constexpr auto VERSION = "v1.1.0";
 constexpr auto DIM = 8;
@@ -30,7 +28,7 @@ const unordered_set<string> SUPPORTED_IMG_TYPES = {
 
 PipelineOut average_hash_pipeline_wrapper(const fs::path);
 
-namespace image_similarity {
+namespace img_sim {
     enum HASH_TYPE {
         ERR = -1,
         AVERAGE,
@@ -84,7 +82,7 @@ int main(int argc, char *argv[]) {
 	// Get paths
     string img = vm["img"].as<string>();
     string comp = vm["comp"].as<string>();
-    image_similarity::HASH_TYPE hash_func = image_similarity::get_hash_type(vm["alg"].as<string>());
+    img_sim::HASH_TYPE hash_func = img_sim::get_hash_type(vm["alg"].as<string>());
 	fs::path img_path(img);
 	fs::path comp_path(comp);
     ImageHasher img_data(img_path);
@@ -108,14 +106,16 @@ int main(int argc, char *argv[]) {
     // Stores pair with string and future that returns hash value
     vector<future<PipelineOut>> futures;
     
-    uint64_t ref_hash = img_data.average_hash_pipeline().second;
+//    uint64_t ref_hash = img_data.average_hash_pipeline().second;
+    img_data.average_hash_pipeline();
     if (fs::is_regular_file(comp_path)) {
         if(!fs::exists(comp_path) || !SUPPORTED_IMG_TYPES.count(comp_path.extension().string())) {
             cerr << "Enter supported img file for comparison!\n";
             return 3;
         }
         ImageHasher comp_data(comp_path);
-        uint64_t comp_hash = comp_data.average_hash_pipeline().second;
+//        uint64_t comp_hash = comp_data.average_hash_pipeline().second;
+        comp_data.average_hash_pipeline();
         int res = img_data - comp_data;
         if (res < AVG_THRES) {
             cout << img << " and " << comp<< " are similar!\n";
