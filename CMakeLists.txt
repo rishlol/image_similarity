@@ -17,7 +17,7 @@ message(STATUS "OpenCV include dir: ${OpenCV_INCLUDE_DIRS}")
 add_executable(image_similarity
 	src/main.cpp
 	src/ImageHasher.cpp
-	src/ImageHasher.h # Remove later
+	# src/ImageHasher.h # Remove later
 )
 
 # Include headers
