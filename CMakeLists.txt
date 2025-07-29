@@ -14,10 +14,11 @@ message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 message(STATUS "OpenCV include dir: ${OpenCV_INCLUDE_DIRS}")
 
 # Add executable
+file(GLOB MY_HEADER_FILES "src/*.h") # For development
 add_executable(image_similarity
 	src/main.cpp
 	src/ImageHasher.cpp
-	# src/ImageHasher.h # Remove later
+	# ${MY_HEADER_FILES} # Uncomment for development
 )
 
 # Include headers

@@ -46,16 +46,6 @@ cv::Mat& ImageHasher::normalize_image() {
     return image;
 }
 
-//int ImageHasher::hamming_distance(ImageHasher &i) {
-//    uint64_t diff = hash ^ i.hash;
-//    int count = 0;
-//    while(diff > 0) {
-//        count += diff & 1;
-//        diff >>= 1;
-//    }
-//    return count;
-//}
-
 int ImageHasher::hamming_distance(uint64_t h) {
     uint64_t diff = hash ^ h;
     int count = 0;

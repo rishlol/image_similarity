@@ -35,11 +35,16 @@ public:
     inline uint64_t getHash() {
         return hash;
     }
+    inline fs::path getFile() {
+        return file;
+    }
     
     // Functions
     cv::Mat& normalize_image();
     void resize_grayscale(const int);
     int hamming_distance(uint64_t);
+
+    // Inline functions
     inline void resize_grayscale_8() {
         resize_grayscale(8);
     };
